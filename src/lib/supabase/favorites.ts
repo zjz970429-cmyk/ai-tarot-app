@@ -1,9 +1,12 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "./database.types";
+import type { createClient } from "./client";
 
 // 收藏功能共用的 Supabase 操作（Step 17）
 // 給 History / Result / Favorites 頁共用，避免重複寫查詢邏輯。
-type Client = SupabaseClient<Database>;
+// Client 型別直接取自瀏覽器端 createClient() 的回傳型別（而不是自己重新組
+// SupabaseClient<Database>），避免 @supabase/ssr 與 @supabase/supabase-js
+// 之間的泛型參數解析差異，導致 build 時出現
+// 「Type '{...}' is not assignable to type '"public"'」這類型別不匹配錯誤。
+type Client = ReturnType<typeof createClient>;
 
 export async function fetchFavoritedReadingIds(
   supabase: Client,
