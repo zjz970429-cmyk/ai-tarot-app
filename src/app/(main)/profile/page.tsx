@@ -44,27 +44,48 @@ export default function ProfilePage() {
         const startOfToday = new Date();
         startOfToday.setHours(0, 0, 0, 0);
 
+        // 分別宣告每個查詢並各自明確標註型別（尤其是 .returns<>()），
+        // 避免把型別完全不同的 head:true 計數查詢跟一般 select 查詢
+        // 混在同一個陣列字面量丟給 Promise.all 時，TypeScript 型別推斷
+        // 失敗、把 data 欄位收斂成 never 導致 build 出錯。
+        const totalReadingsQuery = supabase
+          .from("readings")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user!.id);
+
+        const todayReadingsQuery = supabase
+          .from("readings")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user!.id)
+          .gte("created_at", startOfToday.toISOString());
+
+        const favoritesCountQuery = supabase
+          .from("favorites")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user!.id);
+
+        const readingIdsQuery = supabase
+          .from("readings")
+          .select("id")
+          .eq("user_id", user!.id)
+          .returns<{ id: string }[]>();
+
         const [
-          { count: totalReadings },
-          { count: todayReadings },
-          { count: favoritesCount },
-          { data: readingRows },
+          totalReadingsResult,
+          todayReadingsResult,
+          favoritesCountResult,
+          readingRowsResult,
         ] = await Promise.all([
-          supabase
-            .from("readings")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", user!.id),
-          supabase
-            .from("readings")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", user!.id)
-            .gte("created_at", startOfToday.toISOString()),
-          supabase
-            .from("favorites")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", user!.id),
-          supabase.from("readings").select("id").eq("user_id", user!.id),
+          totalReadingsQuery,
+          todayReadingsQuery,
+          favoritesCountQuery,
+          readingIdsQuery,
         ]);
+
+        const totalReadings = totalReadingsResult.count;
+        const todayReadings = todayReadingsResult.count;
+        const favoritesCount = favoritesCountResult.count;
+        const readingRows = readingRowsResult.data;
 
         const readingIds = (readingRows ?? []).map((r) => r.id);
 
