@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getSpreadById, POSITION_LABELS } from "@/lib/spreads";
-import { getSharedReading } from "./page";
+import { getSharedReading } from "./data";
 
 // 動態 Open Graph 分享圖片（Step 22）
 // 對應 /share/[shareId]，內容包含問題、抽到的牌與「AI Tarot」標識，金色 + 深色主題。

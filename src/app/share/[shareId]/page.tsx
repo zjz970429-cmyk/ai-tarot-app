@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
 import { getSpreadById, POSITION_LABELS, POSITION_ORDER } from "@/lib/spreads";
 import { siteConfig } from "@/config/site";
+import { getSharedReading } from "./data";
 
 // 公開分享頁（Step 21 建立；Step 22 補上 SEO 與分享預覽 metadata）
 // 依 share_id 查詢 readings，若 is_public = true 則顯示唯讀的占卜內容：
@@ -10,44 +9,8 @@ import { siteConfig } from "@/config/site";
 // 不顯示 Email／user_id／收藏資訊／聊天紀錄（查詢時就不 select 這些欄位）。
 // 若查無資料或 is_public = false，顯示「此占卜尚未公開」。
 // 伺服器元件（Server Component），供動態 metadata 與 /opengraph-image 共用同一份查詢。
-interface ReadingCardRow {
-  position: string;
-  card_id: string;
-  card_name: string;
-  is_reversed: boolean;
-  upright_meaning: string | null;
-  reversed_meaning: string | null;
-}
-
-interface SharedReading {
-  question: string | null;
-  ai_interpretation: string | null;
-  spread_id: string | null;
-  is_public: boolean;
-  created_at: string;
-  reading_cards: ReadingCardRow[];
-}
-
-// 用 React cache() 包起來，同一次請求內 generateMetadata() 與頁面本身共用同一筆查詢結果。
-export const getSharedReading = cache(
-  async (shareId: string): Promise<SharedReading | null> => {
-    const supabase = createClient();
-
-    const { data, error } = await supabase
-      .from("readings")
-      .select(
-        "question, ai_interpretation, spread_id, is_public, created_at, reading_cards(position, card_id, card_name, is_reversed, upright_meaning, reversed_meaning)"
-      )
-      .eq("share_id", shareId)
-      .single();
-
-    if (error || !data || !data.is_public) {
-      return null;
-    }
-
-    return data as unknown as SharedReading;
-  }
-);
+// 查詢邏輯（getSharedReading）已移至 ./data.ts：page.tsx 的具名匯出只能是 Next.js
+// 認可的固定欄位（generateMetadata 等），多一個自訂具名匯出會讓 build 失敗。
 
 export async function generateMetadata({
   params,
