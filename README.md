@@ -6,7 +6,7 @@
 
 - 前端：Next.js 14 (App Router) + React + TypeScript + Tailwind CSS + Framer Motion
 - 後端：Supabase（Auth + Database）
-- AI：OpenAI API
+- AI：Gemini API
 
 ## 設計系統
 
@@ -55,7 +55,7 @@ tarot-app/
 │   │   └── home/                  首頁專用區塊元件
 │   ├── lib/
 │   │   ├── supabase/              client.ts / server.ts / middleware.ts / database.types.ts
-│   │   ├── openai/                client.ts / prompts.ts
+│   │   ├── gemini/                client.ts
 │   │   ├── tarot/                 deck.ts（78 張牌資料）／card-meanings.ts（牌義）
 │   │   └── utils/                 cn.ts（Tailwind class 合併）／date.ts
 │   ├── hooks/                     use-tarot-deck / use-auth / use-reading-history
@@ -81,7 +81,7 @@ AI 解牌結構化欄位（整體分析／感情／工作／財運／今日提�
 
 ```bash
 npm install
-cp .env.local.example .env.local   # 填入 Supabase / OpenAI 金鑰
+cp .env.local.example .env.local   # 填入 Supabase / Gemini 金鑰
 npm run dev
 ```
 
@@ -91,7 +91,7 @@ npm run dev
 2. 塔羅牌資料（78 張牌 + 牌義）
 3. 首頁 UI（今日塔羅／開始占卜／我的紀錄／AI塔羅老師／Premium）
 4. 占卜流程 UI 與動畫（洗牌／抽牌／翻牌）
-5. AI 解牌串接（OpenAI）
+5. AI 解牌串接（Gemini）
 6. AI 塔羅老師對話介面
 7. Premium 訂閱與付款
 8. App Store / Google Play 上架（Capacitor 封裝）

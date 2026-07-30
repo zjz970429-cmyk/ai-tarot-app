@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { openai } from "@/lib/openai/client";
+import { gemini, GEMINI_MODEL } from "@/lib/gemini/client";
 import { POSITION_LABELS, spreads } from "@/lib/spreads";
 import { buildInterpretPrompt, type PromptCard } from "@/lib/ai/prompts";
 import { tarotDeck } from "@/lib/tarot-data";
@@ -95,17 +95,17 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      temperature: 0.8,
-      max_tokens: 900,
+    const response = await gemini.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: [{ role: "user", parts: [{ text: user }] }],
+      config: {
+        systemInstruction: system,
+        temperature: 0.8,
+        maxOutputTokens: 900,
+      },
     });
 
-    const interpretation = completion.choices[0]?.message?.content?.trim();
+    const interpretation = response.text?.trim();
 
     if (!interpretation) {
       return NextResponse.json(

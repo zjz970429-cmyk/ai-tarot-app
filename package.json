@@ -18,7 +18,7 @@
     "@supabase/ssr": "^0.4.0",
     "@upstash/redis": "^1.34.0",
     "@upstash/ratelimit": "^2.0.3",
-    "openai": "^4.55.0",
+    "@google/genai": "^2.14.0",
     "zustand": "^4.5.4",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.2",

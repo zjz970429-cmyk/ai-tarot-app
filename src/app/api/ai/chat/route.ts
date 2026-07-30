@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { openai } from "@/lib/openai/client";
+import { gemini, GEMINI_MODEL } from "@/lib/gemini/client";
 import { POSITION_LABELS, POSITION_ORDER, getSpreadById } from "@/lib/spreads";
 import { buildChatPrompt, type ChatHistoryMessage, type PromptCard } from "@/lib/ai/prompts";
 import { tarotDeck } from "@/lib/tarot-data";
@@ -158,20 +158,27 @@ export async function POST(req: NextRequest) {
     newMessage: message,
   });
 
-  const conversation: { role: "system" | ChatRole; content: string }[] = [
-    { role: "system", content: system },
-    ...chatMessages,
-  ];
+  // buildChatPrompt() 回傳的 messages 是 OpenAI 風格的 {role:"user"|"assistant", content}
+  // 陣列（history 一定是 user/assistant 交替，且一定以 newMessage 這則 user 訊息結尾）。
+  // Gemini 的 contents 格式把 assistant 角色叫做 "model"，內容包在 parts: [{ text }] 裡，
+  // 這裡單純做格式轉換，對話內容與順序完全不變。
+  const contents = chatMessages.map((m) => ({
+    role: m.role === "assistant" ? ("model" as const) : ("user" as const),
+    parts: [{ text: m.content }],
+  }));
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: conversation,
-      temperature: 0.8,
-      max_tokens: 500,
+    const response = await gemini.models.generateContent({
+      model: GEMINI_MODEL,
+      contents,
+      config: {
+        systemInstruction: system,
+        temperature: 0.8,
+        maxOutputTokens: 500,
+      },
     });
 
-    const reply = completion.choices[0]?.message?.content?.trim();
+    const reply = response.text?.trim();
 
     if (!reply) {
       return NextResponse.json(

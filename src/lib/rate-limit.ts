@@ -13,7 +13,7 @@ export type RateLimitAction = "interpret" | "chat";
 
 // 延後建立 Redis 連線與 4 個 Ratelimit 實例，直到第一次真的呼叫
 // checkRateLimit() 才建立（而不是在 import 這個檔案的當下）。
-// 原因跟 lib/openai/client.ts 一樣：Redis.fromEnv() 在環境變數缺少時會直接
+// 原因跟 lib/gemini/client.ts 一樣：Redis.fromEnv() 在環境變數缺少時會直接
 // throw，而 Next.js build 的「Collecting page data」階段會靜態 import 這個
 // 檔案，若 Vercel 專案還沒設定 UPSTASH_REDIS_REST_URL / TOKEN，整個 build 會
 // 在還沒收到任何請求之前就失敗。延後建立可以讓 build 不依賴這兩把金鑰是否
