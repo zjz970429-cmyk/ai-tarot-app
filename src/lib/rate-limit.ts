@@ -11,37 +11,58 @@ import { Ratelimit } from "@upstash/ratelimit";
 
 export type RateLimitAction = "interpret" | "chat";
 
-const redis = Redis.fromEnv();
+// 延後建立 Redis 連線與 4 個 Ratelimit 實例，直到第一次真的呼叫
+// checkRateLimit() 才建立（而不是在 import 這個檔案的當下）。
+// 原因跟 lib/openai/client.ts 一樣：Redis.fromEnv() 在環境變數缺少時會直接
+// throw，而 Next.js build 的「Collecting page data」階段會靜態 import 這個
+// 檔案，若 Vercel 專案還沒設定 UPSTASH_REDIS_REST_URL / TOKEN，整個 build 會
+// 在還沒收到任何請求之前就失敗。延後建立可以讓 build 不依賴這兩把金鑰是否
+// 已設定，金鑰真正遺漏時仍會在第一次呼叫 AI API 時丟出清楚的錯誤。
+interface Limiters {
+  anonymousInterpret: Ratelimit;
+  anonymousChat: Ratelimit;
+  authenticatedInterpret: Ratelimit;
+  authenticatedChat: Ratelimit;
+}
 
-// 未登入（依 IP）：AI 解牌每小時 10 次、AI 對話每小時 30 次。
-const anonymousInterpretLimiter = new Ratelimit({
-  redis,
-  limiter: Ratelimit.fixedWindow(10, "1 h"),
-  prefix: "ratelimit:anon:interpret",
-  analytics: false,
-});
+let limiters: Limiters | null = null;
 
-const anonymousChatLimiter = new Ratelimit({
-  redis,
-  limiter: Ratelimit.fixedWindow(30, "1 h"),
-  prefix: "ratelimit:anon:chat",
-  analytics: false,
-});
+function getLimiters(): Limiters {
+  if (limiters) return limiters;
 
-// 已登入（依 user_id）：AI 解牌每日 100 次、AI 對話每日 300 次。
-const authenticatedInterpretLimiter = new Ratelimit({
-  redis,
-  limiter: Ratelimit.fixedWindow(100, "1 d"),
-  prefix: "ratelimit:user:interpret",
-  analytics: false,
-});
+  const redis = Redis.fromEnv();
 
-const authenticatedChatLimiter = new Ratelimit({
-  redis,
-  limiter: Ratelimit.fixedWindow(300, "1 d"),
-  prefix: "ratelimit:user:chat",
-  analytics: false,
-});
+  limiters = {
+    // 未登入（依 IP）：AI 解牌每小時 10 次、AI 對話每小時 30 次。
+    anonymousInterpret: new Ratelimit({
+      redis,
+      limiter: Ratelimit.fixedWindow(10, "1 h"),
+      prefix: "ratelimit:anon:interpret",
+      analytics: false,
+    }),
+    anonymousChat: new Ratelimit({
+      redis,
+      limiter: Ratelimit.fixedWindow(30, "1 h"),
+      prefix: "ratelimit:anon:chat",
+      analytics: false,
+    }),
+    // 已登入（依 user_id）：AI 解牌每日 100 次、AI 對話每日 300 次。
+    authenticatedInterpret: new Ratelimit({
+      redis,
+      limiter: Ratelimit.fixedWindow(100, "1 d"),
+      prefix: "ratelimit:user:interpret",
+      analytics: false,
+    }),
+    authenticatedChat: new Ratelimit({
+      redis,
+      limiter: Ratelimit.fixedWindow(300, "1 d"),
+      prefix: "ratelimit:user:chat",
+      analytics: false,
+    }),
+  };
+
+  return limiters;
+}
 
 export interface RateLimitIdentity {
   /** 已登入使用者的 user_id；未登入時傳入 null / undefined。 */
@@ -62,14 +83,17 @@ function resolveLimiter(
   action: RateLimitAction,
   identity: RateLimitIdentity
 ): { limiter: Ratelimit; key: string } {
+  const { anonymousInterpret, anonymousChat, authenticatedInterpret, authenticatedChat } =
+    getLimiters();
+
   if (identity.userId) {
     return {
-      limiter: action === "interpret" ? authenticatedInterpretLimiter : authenticatedChatLimiter,
+      limiter: action === "interpret" ? authenticatedInterpret : authenticatedChat,
       key: `user:${identity.userId}`,
     };
   }
   return {
-    limiter: action === "interpret" ? anonymousInterpretLimiter : anonymousChatLimiter,
+    limiter: action === "interpret" ? anonymousInterpret : anonymousChat,
     key: `ip:${identity.ip}`,
   };
 }
