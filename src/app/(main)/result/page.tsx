@@ -43,9 +43,19 @@ async function saveReadingToSupabase(
   try {
     const supabase = createClient();
 
-    const { error: userError } = await supabase
-      .from("users")
-      .upsert({ id: userId }, { onConflict: "id" });
+    // upsert() 在目前 npm 解析到的 @supabase/supabase-js 版本下，型別推斷會把
+    // 第一個參數收斂成 never[]（即使 Database 型別本身已經補齊
+    // CompositeTypes / Relationships），是 postgrest-js 這個方法本身泛型解析
+    // 較脆弱的已知問題，不是我們 schema 定義錯誤。這裡只在呼叫這一行做最小範圍
+    // 的型別跳脫，不影響檔案其他地方（insert / select / update）原本正常的型別檢查。
+    const { error: userError } = await (
+      supabase.from("users") as unknown as {
+        upsert: (
+          values: { id: string; created_at?: string },
+          options?: { onConflict?: string }
+        ) => Promise<{ error: { message: string } | null }>;
+      }
+    ).upsert({ id: userId }, { onConflict: "id" });
 
     if (userError) {
       throw userError;
